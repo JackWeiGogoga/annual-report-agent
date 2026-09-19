@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scan to open on phone</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>body{margin:0;background:#000;color:#fff;font:15px/1.5 -apple-system,Inter,"PingFang SC",sans-serif;display:grid;place-items:center;min-height:100vh}
+.card{text-align:center;padding:32px;border:1px solid #2c2c2c;border-radius:20px;background:#0d0d0d}
+#qr img{width:280px;height:280px;image-rendering:pixelated;border-radius:8px;display:block;margin:0 auto}
+code{font:600 16px ui-monospace,Menlo,monospace;color:#bcff2f}
+p{color:#969696;margin:8px 0 0;font-size:13px}</style></head>
+<body><div class="card"><div id="qr"></div><div style="margin-top:16px"><code id="u"></code></div><p>手机与电脑连同一 Wi‑Fi，扫码或输入地址</p><p>可用 <code>?url=</code> 指定其他地址</p></div>
+<script>
+// dev helper: QR for the LAN URL of this dev server. Override with ?url=http://host:port/
+const p = new URLSearchParams(location.search);
+const isLocal = /^(localhost|127\.)/.test(location.hostname);
+const url = p.get('url') || (isLocal ? 'http://192.168.1.13:4187/' : location.origin + '/');
+document.getElementById('u').textContent = url;
+const q = qrcode(0, 'M'); q.addData(url); q.make();
+document.getElementById('qr').innerHTML = q.createImgTag(8, 16);
+</script></body></html>

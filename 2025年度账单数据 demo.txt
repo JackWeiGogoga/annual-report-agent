@@ -1,0 +1,20 @@
+Cover: Trading blueprint:
+Decode your patterns of growth
+P1:Since {date}, you’ve been our constant, with us for {days}
+p2:Jan 1, 2025, 22:50 You planted your first seed this year with {BTC}
+P3:Your activity grew across 315 days, with 87 trades completed.Most traded pair
+DOGE/USDT,Largest traded token OKB,
+p4:Your best trade happened on October 10.BTC/USDT Spot,1223 USDT, marking a powerful
+bloom in your yield this year.
+p5:This year, you earned 21,887USDT,That’s a yield of 138% ,A harvest better than {percent} of
+all other users.
+p6:This year, your trading volume grew to 1,998,887 USDT, Your top3 USDT: spot.futures dex
+p7: With Earn, you subscribed 1234 USDT,and earned 988 usdt
+p8:Across 23 trades, your bots reached a trading volume of 1,234 USDT. That earned you
+2521USDT, Your Spot grid formula worked perfectly―less stress, more stability.
+p9:Your assets reached a peak on August 31, 2025, worth 21,887 USDT,That’s not just a
+personal best. That’s top 30% territory.
+P10:You deposited 21,887 USDT,and withdrew 2,521 USDT. You mastered the flow, keeping your
+capital perfectly balanced.
+p11:放⼀张⽤⼾交易⾏为的雷达图（或者你⾃⼰想想放什么可以和后⾯的persona部分链接起来）。
+p12:Analyzing your blueprint...(过渡⻚）
