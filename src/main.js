@@ -109,7 +109,7 @@ const digest = {
     while (this.trail.children.length > 5) this.trail.firstChild.remove();
   },
   reset() { this.trail.replaceChildren(); },
-  decide(question, node, { icon = '?', small = false } = {}) { this.live('ask', question); this.ic.textContent = icon; $('#dgDecide').replaceChildren(node); app.classList.add('deciding'); app.classList.toggle('deciding-sm', small); },
+  decide(question, node, { icon = '?', small = false } = {}) { this.live('q', question); this.ic.textContent = icon; $('#dgDecide').replaceChildren(node); app.classList.add('deciding'); app.classList.toggle('deciding-sm', small); },
   undecide() { $('#dgDecide').replaceChildren(); app.classList.remove('deciding', 'deciding-sm'); },
 };
 let collapsed = true;
