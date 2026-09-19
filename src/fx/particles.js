@@ -15,7 +15,7 @@ const clamp01 = (v) => Math.min(1, Math.max(0, v));
 export const META = {
   sphere: { tilt: 0, spin: 0.12, size: 1 },
   seed: { tilt: 0, spin: 0.25, size: 1.1 },
-  rose: { tilt: 0.9, spin: 0.18, size: 0.78 },
+  rose: { tilt: 0.9, spin: 0.16, size: 0.7 },
   galaxy: { tilt: 1.0, spin: 0.16, size: 0.72 },
   knot: { tilt: 0.4, spin: 0.3, size: 1 },
   columns: { tilt: 0.72, spin: 0.08, size: 0.7 },
@@ -224,6 +224,36 @@ export const SHAPES = {
   },
 };
 
+/** Dense overlay shapes for hero moments (tens of thousands of soft points). Each fills
+ *  xyz, shade (0..1) and birth (0..1 = when the point appears during the bloom). */
+export const BLOOMS = {
+  rose(n, out, sh, birth) {
+    const k = 2.35;
+    for (let i = 0; i < n; i++) {
+      if (Math.random() < 0.07) {                                    // stem + leaves grow first
+        const f = Math.random();
+        if (f < 0.7) { const g = f / 0.7; put(out, i, 0.2 * g * g + randn() * 0.03, -0.55 - 2.2 * g, 0.05 * g + randn() * 0.03); sh[i] = 0.3 + 0.2 * Math.random(); birth[i] = 0.02 + 0.12 * (1 - g); }
+        else { const side = f < 0.85 ? 1 : -1, g = Math.random(), w = Math.sin(g * Math.PI) * 0.26, bx = 0.05, by = -0.55 - 2.2 * 0.5;
+          put(out, i, bx + side * (0.08 + g * 0.62) + randn() * 0.02, by + g * 0.3 * side + (Math.random() - 0.5) * w, randn() * 0.03 + (Math.random() - 0.5) * w); sh[i] = 0.45 + 0.3 * Math.random(); birth[i] = 0.12 + 0.1 * g; }
+        continue;
+      }
+      const x = Math.pow(Math.random(), 0.8);                       // petal radial coord, slight rim bias
+      const tn = Math.random();                                     // 0 = bud centre … 1 = outermost petal
+      const t = -4 * Math.PI + tn * 20 * Math.PI;
+      const p = (Math.PI / 2) * Math.exp(-t / (8 * Math.PI));
+      const m = (((3.6 * t) % TAU) + TAU) % TAU;
+      const u = 1 - Math.pow(1 - m / Math.PI, 4) / 2;
+      const y = 2 * Math.pow(x * x - x, 2) * Math.sin(p);
+      const r = u * (x * Math.sin(p) + y * Math.cos(p));
+      const hgt = u * (x * Math.cos(p) - y * Math.sin(p));
+      put(out, i, r * Math.cos(t) * k, (hgt - 0.3) * k + 0.35, r * Math.sin(t) * k);
+      const rim = Math.exp(-Math.pow((1 - x) / 0.06, 2));           // bright petal edge
+      sh[i] = clamp01(0.32 + 0.5 * Math.pow(x, 1.3) + 0.4 * rim + 0.1 * (Math.random() - 0.5));
+      birth[i] = 0.18 + 0.72 * tn + 0.06 * Math.random();          // unfold from the centre outward
+    }
+  },
+};
+
 const VERT = /* glsl */ `
 attribute vec3 aTo; attribute float aSeed; attribute float aSize; attribute float aShade; attribute float aShadeTo;
 uniform float uTime, uProgress, uPush, uPR, uScale, uDrift, uSize; uniform vec3 uPointer;
@@ -254,6 +284,35 @@ void main(){
   vec3 col = mix(uDeep, uColor, smoothstep(0.0, 0.8, vShade));
   col = mix(col, uHot, smoothstep(0.82, 1.0, vShade) * 0.85);
   gl_FragColor = vec4(col, a * vA * uOpacity * (0.55 + 0.45 * vShade));
+}`;
+
+const BLOOM_VERT = /* glsl */ `
+attribute float aSeed; attribute float aSize; attribute float aShade; attribute float aBirth;
+uniform float uTime, uGrow, uPush, uPR, uScale, uSize; uniform vec3 uPointer;
+varying float vA; varying float vShade;
+void main(){
+  float g = smoothstep(aBirth, aBirth + 0.22, uGrow);
+  vec3 pos = position * mix(0.12, 1.0, g);
+  pos += 0.012 * vec3(sin(uTime*0.9 + aSeed*40.0), cos(uTime*0.8 + aSeed*23.0), sin(uTime*1.1 + aSeed*11.0));
+  vec2 d = pos.xy - uPointer.xy; float dist = length(d);
+  float f = uPush * smoothstep(1.5, 0.0, dist);
+  vec2 dn = d / max(dist, 0.0001);
+  pos.xy += dn * f * 0.75 + vec2(-dn.y, dn.x) * f * 0.45;
+  pos *= uScale;
+  vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+  gl_Position = projectionMatrix * mv;
+  vShade = aShade;
+  gl_PointSize = aSize * 2.6 * uSize * uPR * (5.5 / -mv.z) * (0.75 + 0.5 * aShade);
+  vA = g * (0.75 + 0.25 * sin(uTime*1.3 + aSeed*70.0));
+}`;
+const BLOOM_FRAG = /* glsl */ `
+uniform vec3 uColor, uDeep, uHot; uniform float uOpacity; varying float vA; varying float vShade;
+void main(){
+  vec2 c = gl_PointCoord - 0.5; float r2 = dot(c, c); if (r2 > 0.25) discard;
+  float a = exp(-r2 * 10.0);
+  vec3 col = mix(uDeep, uColor, smoothstep(0.0, 0.65, vShade));
+  col = mix(col, uHot, smoothstep(0.78, 1.0, vShade));
+  gl_FragColor = vec4(col, a * vA * uOpacity * 0.6);
 }`;
 
 export function createParticles(canvas, { count = 12000, color = '#bcff2f', deep = '#2b6d17', hot = '#eaffbd', reduced = false } = {}) {
@@ -288,7 +347,40 @@ export function createParticles(canvas, { count = 12000, color = '#bcff2f', deep
   const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
   const points = new THREE.Points(geo, mat);
   points.frustumCulled = false;
-  scene.add(points);
+  const rig = new THREE.Group();          // both layers share position / rotation
+  rig.add(points);
+  scene.add(rig);
+
+  // --- dense bloom overlay (hero moments), same rig so it rotates with the cloud
+  const BLOOM_N = 48000;
+  const bPos = new Float32Array(BLOOM_N * 3), bShade = new Float32Array(BLOOM_N), bBirth = new Float32Array(BLOOM_N);
+  const bSeed = new Float32Array(BLOOM_N), bSize = new Float32Array(BLOOM_N);
+  for (let i = 0; i < BLOOM_N; i++) { bSeed[i] = Math.random(); bSize[i] = 0.5 + Math.pow(Math.random(), 1.6) * 1.3; }
+  const bGeo = new THREE.BufferGeometry();
+  bGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3));
+  bGeo.setAttribute('aShade', new THREE.BufferAttribute(bShade, 1));
+  bGeo.setAttribute('aBirth', new THREE.BufferAttribute(bBirth, 1));
+  bGeo.setAttribute('aSeed', new THREE.BufferAttribute(bSeed, 1));
+  bGeo.setAttribute('aSize', new THREE.BufferAttribute(bSize, 1));
+  bGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 12);
+  const bUniforms = {
+    uTime: { value: 0 }, uGrow: { value: 0 }, uPush: { value: 0 }, uPR: { value: pr }, uScale: { value: 1 }, uSize: { value: 1 },
+    uPointer: { value: new THREE.Vector3(99, 99, 0) }, uOpacity: { value: 0 },
+    uColor: { value: new THREE.Color(color) }, uDeep: { value: new THREE.Color('#3c8f24') }, uHot: { value: new THREE.Color(hot) },
+  };
+  const bMat = new THREE.ShaderMaterial({ uniforms: bUniforms, vertexShader: BLOOM_VERT, fragmentShader: BLOOM_FRAG, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
+  const bloomPts = new THREE.Points(bGeo, bMat);
+  bloomPts.frustumCulled = false; bloomPts.visible = false;
+  rig.add(bloomPts);
+  let bloomName = null, bloomOpacityT = 0, bloomGrowT = 0, bloomToken = 0;
+  function bloom(name, { duration = 3400 } = {}) {
+    if (!BLOOMS[name]) return;
+    if (bloomName !== name) { BLOOMS[name](BLOOM_N, bPos, bShade, bBirth); bGeo.attributes.position.needsUpdate = true; bGeo.attributes.aShade.needsUpdate = true; bGeo.attributes.aBirth.needsUpdate = true; bloomName = name; }
+    bloomPts.visible = true; bloomOpacityT = 1; bUniforms.uGrow.value = 0; bloomGrowT = 1;
+    const token = ++bloomToken, t0 = performance.now(), d = reduced ? 400 : duration;
+    (function f(now) { if (token !== bloomToken) return; const p = Math.min(1, (now - t0) / d); bUniforms.uGrow.value = p; if (p < 1) requestAnimationFrame(f); })(t0);
+  }
+  function unbloom() { bloomOpacityT = 0; bloomToken++; }
 
   // --- layout: focus the cloud on a screen rect (world units at z=0 plane)
   let W = 1, H = 1;
@@ -315,8 +407,8 @@ export function createParticles(canvas, { count = 12000, color = '#bcff2f', deep
     const dir = v3.sub(camera.position).normalize();
     const dist = -camera.position.z / dir.z;
     const p = camera.position.clone().add(dir.multiplyScalar(dist));
-    points.worldToLocal(p);
-    uniforms.uPointer.value.copy(p);
+    rig.worldToLocal(p);
+    uniforms.uPointer.value.copy(p); bUniforms.uPointer.value.copy(p);
     pushTarget = 1;
   }
   function releasePointer() { pushTarget = 0; }
@@ -345,6 +437,7 @@ export function createParticles(canvas, { count = 12000, color = '#bcff2f', deep
     if (meta.spin != null) view.spinT = meta.spin;
     if (meta.size != null) view.sizeT = meta.size;
     if (meta.angle != null) view.angle = meta.angle;
+    if (BLOOMS[name]) bloom(name, { duration: Math.max(2600, duration) }); else unbloom();
     uniforms.uProgress.value = 0;
     const token = ++morphToken;
     const t0 = performance.now();
@@ -382,18 +475,23 @@ export function createParticles(canvas, { count = 12000, color = '#bcff2f', deep
     pulse *= 0.92;
     focus.x += (focus.tx - focus.x) * 0.07; focus.y += (focus.ty - focus.y) * 0.07; focus.s += (focus.ts - focus.s) * 0.07;
     uniforms.uScale.value = focus.s * (1 + pulse * 0.18);
-    points.position.set(focus.x, focus.y + Math.sin(t * 0.6) * 0.06, 0);
-    points.rotation.y = view.angle;
-    points.rotation.x = view.tilt + Math.sin(t * 0.25) * 0.08;
+    rig.position.set(focus.x, focus.y + Math.sin(t * 0.6) * 0.06, 0);
+    rig.rotation.y = view.angle;
+    rig.rotation.x = view.tilt + Math.sin(t * 0.25) * 0.08;
+    // bloom layer follows the cloud's uniforms
+    bUniforms.uTime.value = t; bUniforms.uPush.value = uniforms.uPush.value; bUniforms.uScale.value = uniforms.uScale.value; bUniforms.uSize.value = view.size;
+    bUniforms.uOpacity.value += (bloomOpacityT * opacity - bUniforms.uOpacity.value) * (bloomOpacityT ? 0.05 : 0.09);
+    if (bUniforms.uOpacity.value < 0.005 && !bloomOpacityT) bloomPts.visible = false;
     renderer.render(scene, camera);
   }
   requestAnimationFrame(frame);
 
   return {
-    morphTo, setFocus, setPointer, releasePointer, setOpacity, setSpin, kick, resize,
+    morphTo, setFocus, setPointer, releasePointer, setOpacity, setSpin, kick, resize, bloom, unbloom,
+    _debug() { return { bloomName, visible: bloomPts.visible, opacity: bUniforms.uOpacity.value, grow: bUniforms.uGrow.value, target: bloomOpacityT, pointsDrawn: renderer.info.render.points, programs: renderer.info.programs.map((p) => ({ name: p.name, used: p.usedTimes })), sampleShade: [bShade[0], bShade[1000]], samplePos: [bPos[0], bPos[1], bPos[2]] }; },
     registerShape(name, fn, meta) { SHAPES[name] = fn; if (meta) META[name] = meta; },
     setColor(hex) { uniforms.uColor.value.set(hex); },
     get shape() { return current; },
-    destroy() { running = false; renderer.dispose(); geo.dispose(); mat.dispose(); },
+    destroy() { running = false; renderer.dispose(); geo.dispose(); mat.dispose(); bGeo.dispose(); bMat.dispose(); },
   };
 }
