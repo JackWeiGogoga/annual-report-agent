@@ -39,8 +39,8 @@ code, pre { font-family: var(--mono); }
 
 /* ============ app frame ============ */
 .app { position: relative; z-index: 2; margin: 0 auto; max-width: 430px; height: 100dvh; }
-.app[data-phase="story"] { --console-h: min(46dvh, 400px); }
-.app[data-phase="final"] { --console-h: 176px; }
+.app[data-phase="story"], .app[data-phase="final"] { --console-h: min(46dvh, 400px); }
+.app.console-collapsed:not([data-phase="entry"]) { --console-h: calc(140px + env(safe-area-inset-bottom)); }
 @media (min-width: 431px) {
   .app { box-shadow: 0 0 0 1px var(--line), 0 40px 140px rgba(0, 0, 0, .85); background: rgba(0, 0, 0, .28); }
 }
@@ -182,6 +182,28 @@ code, pre { font-family: var(--mono); }
 .cover .hint { font: 500 11px/1.5 var(--mono); color: var(--t4); margin-top: 8vh; max-width: 30ch; }
 .cover .hint::before { content: '// '; }
 
+/* digest: the collapsed console — one live line + a trail of finished steps */
+.digest { display: none; flex: 1; min-height: 0; flex-direction: column; justify-content: flex-end; gap: 8px; padding: 14px 16px 2px; cursor: pointer; }
+.app.console-collapsed:not([data-phase="entry"]) .digest { display: flex; }
+.app.console-collapsed:not([data-phase="entry"]) .thread { display: none; }
+.digest-live { display: flex; align-items: flex-start; gap: 10px; }
+.dg-ic { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 10px var(--brand); transition: background .3s, border-radius .3s; }
+.dg-ic.think { animation: blink 1s infinite; }
+.dg-ic.tool { border-radius: 2px; box-shadow: none; animation: spin 1.1s linear infinite; }
+.dg-ic.done { background: var(--t4); box-shadow: none; }
+.digest-live .txt { flex: 1; min-width: 0; min-height: 2.9em; font-size: 13.5px; line-height: 1.45; color: var(--t1); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: opacity .3s; }
+.digest-live .txt.mono { font: 500 12px/1.6 var(--mono); color: var(--t3); }
+.digest-live .txt .chip { margin-right: 6px; vertical-align: 2px; }
+.digest-live.landing .txt { opacity: 0; }
+.digest-trail { display: flex; gap: 6px; min-height: 22px; overflow: hidden; mask-image: linear-gradient(to right, #000 78%, transparent); }
+.tr { flex: none; display: inline-flex; align-items: center; gap: 5px; font: 500 10.5px/1 var(--mono); color: var(--t3); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; white-space: nowrap; animation: popUp .25s var(--ease); }
+.tr b { color: var(--brand); font-weight: 700; }
+.tr.think::before { content: '◌'; color: var(--t4); }
+.tr.tool::before { content: '⌘'; color: var(--brand); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font: 600 11px/1 var(--mono); color: var(--t2); background: none; border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 9px; cursor: pointer; white-space: nowrap; flex: none; }
+.toggle .chev { display: inline-block; width: 6px; height: 6px; border-right: 1.5px solid var(--brand); border-bottom: 1.5px solid var(--brand); transform: rotate(-135deg) translateY(2px); transition: transform .3s var(--ease); }
+.app:not(.console-collapsed) .toggle .chev { transform: rotate(45deg) translateY(-2px); }
+
 .thread { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 16px 6px; display: flex; flex-direction: column; gap: 10px; mask-image: linear-gradient(to bottom, transparent 0, #000 22px); }
 .thread::-webkit-scrollbar { display: none; }
 .app[data-phase="entry"] .thread { flex: 0; padding: 0; }
@@ -246,12 +268,14 @@ code, pre { font-family: var(--mono); }
 .console.compact .composer-main { max-height: 0; opacity: 0; transform: translateY(14px); overflow: hidden; pointer-events: none; }
 .strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 0; opacity: 0; overflow: hidden; padding: 0 4px; font: 500 11px/1 var(--mono); color: var(--t4); transition: height .5s var(--ease), opacity .4s ease; }
 .console.compact .strip { height: 34px; opacity: 1; transition: height .5s var(--ease), opacity .4s ease .3s; }
-.strip-right { display: flex; align-items: center; gap: 8px; }
+.strip-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.strip .status { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip .status::before { flex: none; }
 .chip.small { font-size: 10px; padding: 4px 6px; }
 .chip.small:empty, .chip.small[hidden] { display: none; }
 .ask { font: 600 11px/1 var(--mono); color: #000; background: var(--brand); border: 0; border-radius: 999px; padding: 7px 11px; cursor: pointer; animation: popUp .3s var(--ease); }
 .ask[hidden] { display: none; }
-.app.compose-open { --console-h: min(52dvh, 330px); }
+.app.compose-open { --console-h: min(56dvh, 460px) !important; }
 
 /* ghost: the composer content flying into the thread as a user bubble */
 .ghost {

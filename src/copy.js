@@ -17,6 +17,8 @@ export const copy = {
     'ui.status.working': 'agent is working…',
     'ui.followup': 'Ask a follow-up…',
     'ui.skills': 'Skills',
+    'ui.process': 'Process',
+    'ui.collapse': 'Collapse',
     'ui.new': 'NEW',
 
     'cover.eyebrow': 'OKX AGENT · YEAR IN REVIEW',
@@ -221,6 +223,8 @@ export const copy = {
     'ui.status.working': '智能体正在执行…',
     'ui.followup': '继续追问…',
     'ui.skills': '技能',
+    'ui.process': '过程',
+    'ui.collapse': '收起',
     'ui.new': '新',
 
     'cover.eyebrow': 'OKX AGENT · 年度账单',

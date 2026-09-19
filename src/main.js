@@ -17,6 +17,7 @@ const nextBtn = $('#next'), nextRing = $('#nextRing'), nextLabel = $('#nextLabel
 const composer = $('#composer'), composerBox = $('#composerBox'), input = $('#composerInput'), chips = $('#chips');
 const sendBtn = $('#send'), slash = $('#slash'), slashBtn = $('#slashBtn'), statusEl = $('#status');
 const consoleEl = $('#console'), stripStatus = $('#stripStatus'), stripChip = $('#stripChip'), stripAsk = $('#stripAsk');
+const toggleBtn = $('#toggleThread'), digestLive = $('#digestLive');
 
 let lang = params.get('lang') ? (params.get('lang') === 'zh' ? 'zh' : 'en') : ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
 const t = (key, vars = {}) => {
@@ -64,7 +65,7 @@ window.addEventListener('pointerdown', (e) => { particles.setPointer(e.clientX, 
 window.addEventListener('pointerup', () => { clearTimeout(releaseTimer); releaseTimer = setTimeout(() => particles.releasePointer(), 300); });
 
 // ---------------------------------------------------------------- static UI / i18n
-function setStatus(kind, text) { for (const el of [statusEl, stripStatus]) { el.className = 'status ' + kind; el.textContent = text; } }
+function setStatus(kind, text) { for (const el of [statusEl, stripStatus]) { el.className = 'status ' + kind; el.textContent = el === stripStatus ? text.replace(/^okx-trade-mcp\s·\s/, '') : text; } }
 function applyStatic() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   $('#brandSub').textContent = t('ui.brand');
@@ -78,6 +79,7 @@ function applyStatic() {
   $('#sheetDl').textContent = t('sheet.download');
   $('#sheetClose').textContent = t('sheet.close');
   stripAsk.textContent = t('ui.followup');
+  $('#toggleLabel').textContent = collapsed ? t('ui.process') : t('ui.collapse');
   if (!storyStarted) { input.placeholder = t('composer.placeholder'); setStatus('', t('ui.status.idle')); }
   else if (app.dataset.phase === 'final') input.placeholder = t('ui.followup');
 }
@@ -93,6 +95,34 @@ function setProgress(n) {
   progress.setAttribute('aria-valuenow', n);
 }
 
+// ---------------------------------------------------------------- digest (collapsed console)
+const digest = {
+  ic: $('#dgIc'), txt: $('#dgTxt'), trail: $('#dgTrail'),
+  live(kind, content) {
+    this.ic.className = 'dg-ic ' + kind;
+    this.txt.className = 'txt' + (kind === 'think' || kind === 'tool' || kind === 'done' ? ' mono' : '');
+    if (typeof content === 'string') this.txt.textContent = content; else this.txt.replaceChildren(...[].concat(content));
+  },
+  mirror(text) { this.txt.textContent = text; },
+  push(kind, label, ok) {
+    this.trail.appendChild(h('span', { class: 'tr ' + kind }, h('span', { text: label }), ok ? h('b', { text: '✓' }) : null));
+    while (this.trail.children.length > 5) this.trail.firstChild.remove();
+  },
+  reset() { this.trail.replaceChildren(); },
+};
+let collapsed = true, autoOpened = false;
+function setCollapsed(v, { auto = false } = {}) {
+  collapsed = v; autoOpened = auto && !v;
+  app.classList.toggle('console-collapsed', v);
+  $('#toggleLabel').textContent = v ? t('ui.process') : t('ui.collapse');
+  if (!v) requestAnimationFrame(scrollEnd);
+  setTimeout(focusParticles, 60); setTimeout(focusParticles, 1000);
+}
+toggleBtn.addEventListener('click', () => setCollapsed(!collapsed));
+$('#digest').addEventListener('click', () => setCollapsed(false));
+function autoExpand() { if (collapsed) setCollapsed(false, { auto: true }); }
+function autoCollapse() { if (autoOpened) setCollapsed(true); }
+
 // ---------------------------------------------------------------- agent console
 function scrollEnd() { thread.scrollTop = thread.scrollHeight; }
 function push(node) { thread.appendChild(node); scrollEnd(); requestAnimationFrame(scrollEnd); setTimeout(scrollEnd, 380); return node; }
@@ -101,6 +131,7 @@ const fmtArgs = (args) => Object.entries(args).map(([k, v]) => `${k}=${Array.isA
 
 const agent = {
   user(text, skill) {
+    digest.live('say', [skill ? h('span', { class: 'chip', text: '/' + skill }) : null, h('span', { text })].filter(Boolean));
     return push(h('div', { class: 'msg user' }, h('div', { class: 'bubble' }, skill ? h('span', { class: 'chip', text: '/' + skill }) : null, h('span', { text }))));
   },
   async think(lines, { perLine = 600 } = {}) {
@@ -110,10 +141,13 @@ const agent = {
     const msg = push(h('div', { class: 'msg think' }, head, body));
     head.addEventListener('click', () => msg.classList.toggle('collapsed'));
     const t0 = performance.now();
-    for (const line of lines) { body.appendChild(h('div', { class: 'line', text: line })); scrollEnd(); await sleep(prefersReduced ? 80 : perLine); }
+    digest.live('think', t('ui.thinking') + '…');
+    for (const line of lines) { body.appendChild(h('div', { class: 'line', text: line })); digest.live('think', '› ' + line); scrollEnd(); await sleep(prefersReduced ? 80 : perLine); }
     await sleep(220);
     head.classList.add('done');
-    label.textContent = t('ui.thought', { s: ((performance.now() - t0) / 1000).toFixed(1) });
+    const thought = t('ui.thought', { s: ((performance.now() - t0) / 1000).toFixed(1) });
+    label.textContent = thought;
+    digest.live('done', thought); digest.push('think', thought.replace(/[^0-9.]*([0-9.]+).*/, '$1s'));
     msg.classList.add('collapsed');
     return msg;
   },
@@ -122,9 +156,12 @@ const agent = {
     const msg = push(h('div', { class: 'msg tool' },
       h('div', { class: 'tool-row' }, h('span', { class: 'tool-ic', text: '⌘' }), h('code', { class: 'tool-name', text: name }), h('code', { class: 'tool-args', text: fmtArgs(args) }), status)));
     setStatus('busy', t('ui.status.working'));
+    digest.live('tool', `⌘ ${name} ${fmtArgs(args)}`);
     await sleep(prefersReduced ? 120 : ms);
     status.replaceChildren(h('span', { class: 'ok', text: '✓' }), h('span', { text: `${ms}ms` }));
-    msg.append(h('div', { class: 'tool-res', text: summary ?? JSON.stringify(result) }), h('pre', { class: 'tool-json', text: JSON.stringify(result, null, 2) }));
+    const sum = summary ?? JSON.stringify(result);
+    digest.live('done', `✓ ${name} · ${ms}ms → ${sum}`); digest.push('tool', name, true);
+    msg.append(h('div', { class: 'tool-res', text: sum }), h('pre', { class: 'tool-json', text: JSON.stringify(result, null, 2) }));
     msg.addEventListener('click', () => msg.classList.toggle('open'));
     scrollEnd();
     setStatus('live', t('ui.status.live'));
@@ -134,16 +171,20 @@ const agent = {
   async say(text) {
     const span = h('span'), caret = h('i', { class: 'caret' });
     push(h('div', { class: 'msg ai' }, h('div', { class: 'ai-text' }, span, caret)));
-    await typewrite(span, text, { cps: lang === 'zh' ? 17 : 38, onTick: scrollEnd });
+    digest.live('say', '');
+    await typewrite(span, text, { cps: lang === 'zh' ? 17 : 38, onTick: () => { scrollEnd(); digest.mirror(span.textContent); } });
+    digest.mirror(text);
     caret.remove();
   },
   choice(question, options) {
     return new Promise((res) => {
       const opts = h('div', { class: 'opts' });
       push(h('div', { class: 'msg choice' }, h('div', { class: 'q', text: question }), opts));
+      digest.live('say', question);
+      autoExpand();
       for (const o of options) {
         const b = h('button', { class: 'opt', type: 'button', text: o.label });
-        b.addEventListener('click', () => { b.classList.add('picked'); [...opts.children].forEach((x) => (x.disabled = true)); res(o.key); });
+        b.addEventListener('click', () => { b.classList.add('picked'); [...opts.children].forEach((x) => (x.disabled = true)); autoCollapse(); res(o.key); });
         opts.appendChild(b);
       }
     });
@@ -151,7 +192,7 @@ const agent = {
   approval({ title, body, scopes = [], accept, decline, okLabel, noLabel }) {
     return new Promise((res) => {
       const verdict = h('div', { class: 'verdict' });
-      const done = (ok) => { card.classList.add('resolved'); verdict.textContent = ok ? '✓ ' + (okLabel || t('ui.accepted')) : '✕ ' + (noLabel || t('ui.declined')); verdict.classList.toggle('neg', !ok); res(ok); };
+      const done = (ok) => { card.classList.add('resolved'); verdict.textContent = ok ? '✓ ' + (okLabel || t('ui.accepted')) : '✕ ' + (noLabel || t('ui.declined')); verdict.classList.toggle('neg', !ok); autoCollapse(); res(ok); };
       const card = h('div', { class: 'card' },
         h('div', { class: 'card-h' }, h('span', { class: 'shield', text: '◈' }), h('span', { text: title })),
         h('p', { text: body }),
@@ -161,6 +202,8 @@ const agent = {
           h('button', { class: 'btn primary', type: 'button', text: accept, onClick: () => done(true) })),
         verdict);
       push(h('div', { class: 'msg approval' }, card));
+      digest.live('say', title);
+      autoExpand();
     });
   },
 };
@@ -264,8 +307,8 @@ function flyToThread(text, skill) {
   Object.assign(ghost.style, { left: src.left + 'px', top: src.top + 'px', width: src.width + 'px', height: src.height + 'px' });
   document.body.appendChild(ghost);
   const msg = agent.user(text, skill);
-  msg.classList.add('landing');
-  const bubble = msg.querySelector('.bubble');
+  msg.classList.add('landing'); digestLive.classList.add('landing');
+  const bubble = collapsed ? digestLive : msg.querySelector('.bubble');
   const cur = { x: src.left, y: src.top, w: src.width, h: src.height };
   const t0 = performance.now();
   return new Promise((res) => {
@@ -277,7 +320,7 @@ function flyToThread(text, skill) {
       Object.assign(ghost.style, { left: cur.x + 'px', top: cur.y + 'px', width: cur.w + 'px', height: cur.h + 'px' });
       if (e > 260) ghost.classList.add('to-bubble');
       const settled = Math.abs(r.left - cur.x) + Math.abs(r.top - cur.y) + Math.abs(r.width - cur.w) < 2;
-      if ((settled && e > 1000) || e > 1700 || prefersReduced) { ghost.remove(); msg.classList.remove('landing'); res(); }
+      if ((settled && e > 1000) || e > 1700 || prefersReduced) { ghost.remove(); msg.classList.remove('landing'); digestLive.classList.remove('landing'); res(); }
       else requestAnimationFrame(f);
     }
     requestAnimationFrame(f);
@@ -303,6 +346,7 @@ async function startStory(text) {
   await runChapters();
 }
 function openComposer() {
+  setCollapsed(false);
   consoleEl.classList.remove('compact'); app.classList.add('compose-open');
   stripAsk.hidden = true;
   setTimeout(focusParticles, 60); setTimeout(focusParticles, 1000);
@@ -631,6 +675,7 @@ async function runChapters() {
     const step = flat[i];
     const fn = step === 'branch' ? branch[branchOrder[b++]] : step;
     if (i > 0) setProgress(n);
+    digest.reset();
     if (i >= FROM) {
       if (i > 0 && FROM === i && FROM > 0) setStatus('live', t('ui.status.live'));
       await fn(step === 'branch' ? n + 1 : undefined);
@@ -641,6 +686,7 @@ async function runChapters() {
 }
 
 // ---------------------------------------------------------------- boot
+app.classList.add('console-collapsed');
 applyStatic();
 (async () => {
   await sleep(300);
