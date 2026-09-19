@@ -301,15 +301,15 @@ code, pre { font-family: var(--mono); }
 .ask[hidden] { display: none; }
 .app.compose-open { --console-h: min(56dvh, 460px) !important; }
 
-/* ghost: the composer content flying into the thread as a user bubble */
-.ghost {
+/* fly-ghost: the composer content flying into the thread as a user bubble */
+.fly-ghost {
   position: fixed; z-index: 60; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   padding: 8px 12px; overflow: hidden; pointer-events: none; color: var(--t1); font-size: 15px; line-height: 1.5;
   background: rgba(20, 20, 20, .96); border: 1px solid rgba(188, 255, 47, .55); border-radius: 16px;
   box-shadow: 0 0 0 3px var(--brand-dim), 0 24px 60px rgba(0, 0, 0, .6);
   transition: background .5s ease, border-color .5s ease, border-radius .5s ease, box-shadow .5s ease, font-size .5s ease;
 }
-.ghost.to-bubble { background: var(--s3); border-color: var(--line-2); border-radius: 14px 14px 4px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); font-size: 14px; }
+.fly-ghost.to-bubble { background: var(--s3); border-color: var(--line-2); border-radius: 14px 14px 4px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); font-size: 14px; }
 .msg.user .bubble { transition: opacity .3s ease; }
 .msg.user.landing .bubble { opacity: 0; }
 .composer-box { display: flex; align-items: center; gap: 8px; background: rgba(20, 20, 20, .92); border: 1px solid var(--line-2); border-radius: 16px; padding: 8px 8px 8px 12px; transition: border-color .3s, box-shadow .3s; }

@@ -335,7 +335,7 @@ async function runDemo() {
  *  console re-lays out underneath; its style morphs from input box to user bubble on the way. */
 function flyToThread(text, skill) {
   const src = composerBox.getBoundingClientRect();
-  const ghost = h('div', { class: 'ghost' }, skill ? h('span', { class: 'chip', text: '/' + skill }) : null, h('span', { text }));
+  const ghost = h('div', { class: 'fly-ghost' }, skill ? h('span', { class: 'chip', text: '/' + skill }) : null, h('span', { text }));
   Object.assign(ghost.style, { left: src.left + 'px', top: src.top + 'px', width: src.width + 'px', height: src.height + 'px' });
   document.body.appendChild(ghost);
   const msg = agent.user(text, skill);

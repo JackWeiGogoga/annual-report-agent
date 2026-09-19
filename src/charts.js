@@ -214,7 +214,7 @@ export function gridBot(series, { width = 360, height = 150, levels = [0.28, 0.3
   }
   const tip = tooltip(wrap);
   const mEls = marks.map((m) => {
-    const g = svg('g', { class: `mark ${m.side}`, opacity: 0, transform: `translate(${X(m.i).toFixed(1)},${Y(m.L).toFixed(1)})` });
+    const g = svg('g', { class: `gm ${m.side}`, opacity: 0, transform: `translate(${X(m.i).toFixed(1)},${Y(m.L).toFixed(1)})` });
     g.append(svg('circle', { r: 11, fill: 'transparent' }), svg('circle', { r: 6, class: 'ring' }), svg('circle', { r: 4, class: m.side === 'buy' ? 'dot' : 'hollow' }));
     const show = () => { const rect = s.getBoundingClientRect(); tip.show((X(m.i) / width) * rect.width, (Y(m.L) / height) * rect.height, [[m.side === 'buy' ? buyLabel : sellLabel, `${priceLabel} · L${levels.indexOf(m.L) + 1}`]]); };
     g.addEventListener('pointerenter', show); g.addEventListener('pointerdown', show); g.addEventListener('pointerleave', () => tip.hide());
