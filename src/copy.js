@@ -90,6 +90,7 @@ export const copy = {
     'ch6.beats': 'Better than {beats}% of traders',
     'ch6.you': 'YOU',
 
+    'choice.eyebrow': 'YOUR CALL',
     'choice.q': 'Where should I dig in next?',
     'choice.volume': 'Trading volume',
     'choice.earn': 'Earn',
@@ -291,6 +292,7 @@ export const copy = {
     'ch6.beats': '超过 {beats}% 的用户',
     'ch6.you': '你',
 
+    'choice.eyebrow': '由你决定',
     'choice.q': '接下来先看哪一项？',
     'choice.volume': '交易量',
     'choice.earn': '赚币',

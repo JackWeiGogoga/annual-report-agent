@@ -99,7 +99,7 @@ function setProgress(n) {
 const digest = {
   ic: $('#dgIc'), txt: $('#dgTxt'), trail: $('#dgTrail'),
   live(kind, content) {
-    this.ic.className = 'dg-ic ' + kind;
+    this.ic.className = 'dg-ic ' + kind; this.ic.textContent = '';
     this.txt.className = 'txt' + (kind === 'think' || kind === 'tool' || kind === 'done' ? ' mono' : '');
     if (typeof content === 'string') this.txt.textContent = content; else this.txt.replaceChildren(...[].concat(content));
   },
@@ -109,19 +109,19 @@ const digest = {
     while (this.trail.children.length > 5) this.trail.firstChild.remove();
   },
   reset() { this.trail.replaceChildren(); },
+  decide(question, node, { icon = '?', small = false } = {}) { this.live('ask', question); this.ic.textContent = icon; $('#dgDecide').replaceChildren(node); app.classList.add('deciding'); app.classList.toggle('deciding-sm', small); },
+  undecide() { $('#dgDecide').replaceChildren(); app.classList.remove('deciding', 'deciding-sm'); },
 };
-let collapsed = true, autoOpened = false;
-function setCollapsed(v, { auto = false } = {}) {
-  collapsed = v; autoOpened = auto && !v;
+let collapsed = true;
+function setCollapsed(v) {
+  collapsed = v;
   app.classList.toggle('console-collapsed', v);
   $('#toggleLabel').textContent = v ? t('ui.process') : t('ui.collapse');
   if (!v) requestAnimationFrame(scrollEnd);
   setTimeout(focusParticles, 60); setTimeout(focusParticles, 1000);
 }
 toggleBtn.addEventListener('click', () => setCollapsed(!collapsed));
-$('#digest').addEventListener('click', () => setCollapsed(false));
-function autoExpand() { if (collapsed) setCollapsed(false, { auto: true }); }
-function autoCollapse() { if (autoOpened) setCollapsed(true); }
+$('#digest').addEventListener('click', (e) => { if (!e.target.closest('button')) setCollapsed(false); });
 
 // ---------------------------------------------------------------- agent console
 function scrollEnd() { thread.scrollTop = thread.scrollHeight; }
@@ -178,32 +178,42 @@ const agent = {
   },
   choice(question, options) {
     return new Promise((res) => {
-      const opts = h('div', { class: 'opts' });
-      push(h('div', { class: 'msg choice' }, h('div', { class: 'q', text: question }), opts));
-      digest.live('say', question);
-      autoExpand();
-      for (const o of options) {
-        const b = h('button', { class: 'opt', type: 'button', text: o.label });
-        b.addEventListener('click', () => { b.classList.add('picked'); [...opts.children].forEach((x) => (x.disabled = true)); autoCollapse(); res(o.key); });
-        opts.appendChild(b);
-      }
+      const sets = [];
+      const pick = (key) => {
+        for (const set of sets) { set.classList.add('done'); [...set.children].forEach((c) => { c.disabled = true; c.classList.toggle('picked', c.dataset.key === key); }); }
+        digest.undecide(); res(key);
+      };
+      const make = () => {
+        const el = h('div', { class: 'cards' }, options.map((o, i) => h('button', { class: 'ccard', type: 'button', 'data-key': o.key, 'data-idx': String(i + 1).padStart(2, '0'), style: `--i:${i}`, onClick: () => pick(o.key) },
+          h('span', { class: 'glyph', text: o.glyph || '›' }), h('b', { text: o.label }), o.hint ? h('span', { class: 'hint', text: o.hint }) : null)));
+        sets.push(el); return el;
+      };
+      push(h('div', { class: 'msg choice' }, h('div', { class: 'eyebrow sm', text: t('choice.eyebrow') }), h('div', { class: 'q', text: question }), make()));
+      digest.decide(question, make());
     });
   },
-  approval({ title, body, scopes = [], accept, decline, okLabel, noLabel }) {
+  approval({ title, body, accept, decline, okLabel, noLabel }) {
     return new Promise((res) => {
+      const rows = [];
       const verdict = h('div', { class: 'verdict' });
-      const done = (ok) => { card.classList.add('resolved'); verdict.textContent = ok ? '✓ ' + (okLabel || t('ui.accepted')) : '✕ ' + (noLabel || t('ui.declined')); verdict.classList.toggle('neg', !ok); autoCollapse(); res(ok); };
+      const done = (ok) => {
+        card.classList.add('resolved');
+        verdict.textContent = ok ? '✓ ' + (okLabel || t('ui.accepted')) : '✕ ' + (noLabel || t('ui.declined'));
+        verdict.classList.toggle('neg', !ok);
+        rows.forEach((r) => [...r.children].forEach((b) => (b.disabled = true)));
+        digest.undecide(); res(ok);
+      };
+      const makeRow = () => {
+        const r = h('div', { class: 'card-actions' },
+          decline ? h('button', { class: 'btn', type: 'button', text: decline, onClick: () => done(false) }) : null,
+          h('button', { class: 'btn primary', type: 'button', text: accept, onClick: () => done(true) }));
+        rows.push(r); return r;
+      };
       const card = h('div', { class: 'card' },
         h('div', { class: 'card-h' }, h('span', { class: 'shield', text: '◈' }), h('span', { text: title })),
-        h('p', { text: body }),
-        scopes.length ? h('div', { class: 'scopes' }, scopes.map((s) => h('code', { text: s }))) : null,
-        h('div', { class: 'card-actions' },
-          decline ? h('button', { class: 'btn', type: 'button', text: decline, onClick: () => done(false) }) : null,
-          h('button', { class: 'btn primary', type: 'button', text: accept, onClick: () => done(true) })),
-        verdict);
+        h('p', { text: body }), makeRow(), verdict);
       push(h('div', { class: 'msg approval' }, card));
-      digest.live('say', title);
-      autoExpand();
+      digest.decide(title, makeRow(), { icon: '◈', small: true });
     });
   },
 };
@@ -484,7 +494,9 @@ async function chHarvest() {
   await beat(vz, () => m.play(), t('ch6.b3', v));
   await waitNext({ auto: AUTOPLAY_MS && 6000 });
   const pick = await agent.choice(t('choice.q'), [
-    { key: 'volume', label: t('choice.volume') }, { key: 'earn', label: t('choice.earn') }, { key: 'bots', label: t('choice.bots') },
+    { key: 'volume', label: t('choice.volume'), glyph: '▂▅▇', hint: fmt.compact(report.volume.total) + ' USDT' },
+    { key: 'earn', label: t('choice.earn'), glyph: '◔', hint: '+' + fmt.int(report.earn.earned) + ' USDT' },
+    { key: 'bots', label: t('choice.bots'), glyph: '⌗', hint: '+' + fmt.int(report.bots.earned) + ' USDT' },
   ]);
   branchOrder = [pick, ...['volume', 'earn', 'bots'].filter((k) => k !== pick)];
   await agent.say(t('choice.ack', { what: t('choice.' + pick) }));

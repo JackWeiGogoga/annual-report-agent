@@ -41,6 +41,8 @@ code, pre { font-family: var(--mono); }
 .app { position: relative; z-index: 2; margin: 0 auto; max-width: 430px; height: 100dvh; }
 .app[data-phase="story"], .app[data-phase="final"] { --console-h: min(46dvh, 400px); }
 .app.console-collapsed:not([data-phase="entry"]) { --console-h: calc(140px + env(safe-area-inset-bottom)); }
+.app.console-collapsed.deciding:not([data-phase="entry"]) { --console-h: calc(232px + env(safe-area-inset-bottom)); }
+.app.console-collapsed.deciding.deciding-sm:not([data-phase="entry"]) { --console-h: calc(196px + env(safe-area-inset-bottom)); }
 @media (min-width: 431px) {
   .app { box-shadow: 0 0 0 1px var(--line), 0 40px 140px rgba(0, 0, 0, .85); background: rgba(0, 0, 0, .28); }
 }
@@ -241,12 +243,34 @@ code, pre { font-family: var(--mono); }
 .msg.ai .ai-text { font-size: 14px; line-height: 1.55; color: var(--t1); }
 .ai-text .caret { display: inline-block; width: 7px; height: 14px; background: var(--brand); vertical-align: -2px; margin-left: 2px; animation: blink .9s steps(2) infinite; }
 
-.msg.choice .q { font-size: 14px; margin-bottom: 8px; }
-.opts { display: flex; flex-wrap: wrap; gap: 8px; }
-.opt { background: var(--s3); border: 1px solid var(--line-2); color: var(--t1); border-radius: 999px; padding: 8px 14px; font: 600 13px var(--sans); cursor: pointer; transition: all .2s; }
-.opt:hover { border-color: var(--brand); }
-.opt.picked { background: var(--brand); color: #000; border-color: var(--brand); }
-.opt:disabled:not(.picked) { opacity: .35; cursor: default; }
+/* decision cards (choice) — shared by the thread message and the collapsed digest */
+.msg.choice .eyebrow.sm { font-size: 9.5px; letter-spacing: .16em; margin-bottom: 8px; }
+.msg.choice .q { font-size: 14px; margin-bottom: 10px; }
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ccard {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-width: 0;
+  padding: 11px 10px 10px; background: rgba(22, 22, 22, .92); border: 1px solid var(--line-2); border-radius: 12px;
+  color: var(--t1); text-align: left; cursor: pointer; overflow: hidden;
+  transition: border-color .2s, background .25s, transform .25s var(--ease), opacity .35s;
+  animation: popUp .35s var(--ease) both; animation-delay: calc(var(--i) * 70ms);
+}
+.ccard::before { content: attr(data-idx); position: absolute; top: 9px; right: 9px; font: 600 9.5px/1 var(--mono); color: var(--t4); letter-spacing: .08em; }
+.ccard .glyph { font: 500 15px/1 var(--mono); color: var(--brand); }
+.ccard b { font: 600 13px/1.2 var(--sans); letter-spacing: -.01em; }
+.ccard .hint { font: 500 10.5px/1.2 var(--mono); color: var(--t3); white-space: nowrap; }
+.ccard:hover { border-color: rgba(188, 255, 47, .6); }
+.ccard.picked { background: var(--brand); border-color: var(--brand); color: #000; transform: translateY(-2px); }
+.ccard.picked .glyph, .ccard.picked .hint { color: rgba(0, 0, 0, .62); }
+.ccard.picked::before { color: rgba(0, 0, 0, .5); }
+.ccard.picked::after { content: '✓'; position: absolute; right: 9px; bottom: 9px; font: 700 11px/1 var(--mono); color: #000; }
+.cards.done .ccard:not(.picked) { opacity: .28; }
+.ccard:disabled { cursor: default; }
+.digest-decide { display: none; }
+.digest-decide:not(:empty) { display: block; }
+.app.deciding .digest-trail { display: none; }
+.digest-decide .cards { margin-top: 2px; }
+.digest-decide .card-actions { margin-top: 2px; }
+.dg-ic.ask { width: 16px; height: 16px; margin-top: 2px; border-radius: 4px; background: var(--brand); color: #000; font: 700 10px/16px var(--mono); text-align: center; font-style: normal; box-shadow: none; }
 
 .card { background: var(--s2); border: 1px solid var(--line-2); border-radius: 14px; padding: 12px; }
 .card-h { display: flex; align-items: center; gap: 8px; font: 600 13px var(--sans); }
