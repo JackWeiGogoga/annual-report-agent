@@ -44,6 +44,7 @@ function h(tag, attrs = {}, ...kids) {
 // ---------------------------------------------------------------- effects
 const ascii = createAsciiField($('#ascii'), { intensity: 0.62 });
 const particles = createParticles($('#gl'), { reduced: prefersReduced });
+window.__fx = { particles, ascii }; // debug handle (console: __fx.particles.morphTo('rose'))
 function focusParticles() {
   if (app.dataset.phase === 'entry') {
     const r = app.getBoundingClientRect();
@@ -57,6 +58,27 @@ function focusParticles() {
   }
 }
 focusParticles();
+// data-driven shapes: the activity calendar as a 3D column field, and the volume split as bars
+particles.registerShape('columns', (n, out, sh) => {
+  const lv = S.activity, dow = (new Date(Date.UTC(YEAR, 0, 1)).getUTCDay() + 6) % 7;
+  const w = lv.map((l) => l + 0.12); const total = w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < n; i++) {
+    let r = Math.random() * total, d = 0; while (d < w.length - 1 && r > w[d]) { r -= w[d]; d++; }
+    const idx = dow + d, col = Math.floor(idx / 7), row = idx % 7, hgt = 0.08 + lv[d] * 0.3;
+    out[i * 3] = (col / 52 - 0.5) * 4.2 + (Math.random() - 0.5) * 0.05;
+    out[i * 3 + 1] = -0.7 + Math.random() * hgt;
+    out[i * 3 + 2] = (row / 6 - 0.5) * 1.15 + (Math.random() - 0.5) * 0.05;
+    sh[i] = 0.2 + 0.8 * (lv[d] / 4);
+  }
+}, { tilt: 0.72, spin: 0.05, size: 0.7, angle: -0.25 });
+particles.registerShape('volumeBars', (n, out, sh) => {
+  const vals = report.volume.breakdown.map((b) => b.v), max = Math.max(...vals), xs = [-1.3, 0, 1.3];
+  for (let i = 0; i < n; i++) {
+    const c = i % 3, hgt = 0.15 + 2.6 * (vals[c] / max), y = Math.random() * hgt;
+    out[i * 3] = xs[c] + (Math.random() - 0.5) * 0.7; out[i * 3 + 1] = -1.3 + y; out[i * 3 + 2] = (Math.random() - 0.5) * 0.4;
+    sh[i] = 0.25 + 0.75 * (y / 2.75);
+  }
+}, { tilt: 0.42, spin: 0.05, size: 0.85, angle: 0.3 });
 window.addEventListener('resize', focusParticles);
 stage.addEventListener('transitionend', focusParticles);
 let releaseTimer = 0;
@@ -385,8 +407,7 @@ async function chConnect() {
   const sc = scene(0, 'SESSION', 'okx-trade-mcp', hr, vz);
   sc.querySelector('.eyebrow span:nth-child(3)').textContent = 'SESSION';
   await agent.tool('mcp.connect', { server: 'okx-trade-mcp', transport: 'stdio' }, { status: 'ok', tools: 167, modules: 11, version: '1.4.2' }, { ms: 860, summary: 'connected · 167 tools · 11 modules' });
-  await showScene(sc, { shape: 'ring' });
-  particles.setSpin(0.14);
+  await showScene(sc, { shape: 'knot' });
   await beat(hr, null, null, { pause: 300 });
   await beat(vz, () => map.classList.add('go'), t('session.ready'));
   setStatus('live', t('ui.status.live'));
@@ -402,7 +423,7 @@ async function chGenesis() {
   const strip = C.tenureStrip(report.user.joined, YEAR);
   const vz = B(viz(null, strip));
   const sc = scene(1, 'ch2.name', 'account_profile', hr, lead, vz);
-  await showScene(sc, { shape: 'helix' });
+  await showScene(sc, { shape: 'galaxy' });
   const v = { date: D(report.user.joined), days: fmt.int(days), years: Math.floor(days / 365) };
   await beat([hr, lead], () => countUp(hr.querySelector('.num'), days, { duration: 1800 }), t('ch2.b1', v));
   await beat(vz, () => strip.play(), t('ch2.b2', v));
@@ -429,7 +450,7 @@ async function chFirst() {
   const v = { date: D(f.ts), time: fmt.time(f.ts), sz: f.sz, px: f.px.toLocaleString('en-US', { minimumFractionDigits: 2 }) };
   await beat(hr, null, t('ch3.b1', v));
   await beat(rc, () => rc.classList.add('go'), t('ch3.b2', v));
-  await beat(null, () => particles.morphTo('sphere', { duration: 2600 }), t('ch3.b3', v));
+  await beat(null, () => particles.morphTo('rose', { duration: 3200 }), t('ch3.b3', v));
   await waitNext();
 }
 
@@ -448,7 +469,7 @@ async function chActivity() {
   const vz = B(viz(`${YEAR}`, hm, `${a.activeDays}/365`));
   const stats = B(h('div', { class: 'stat-row' }, stat(a.topPair, t('ch4.pair')), stat(a.topToken, t('ch4.token'))));
   const sc = scene(3, 'ch4.name', 'account_bills', hr, vz, stats);
-  await showScene(sc, { shape: 'lattice' });
+  await showScene(sc, { shape: 'columns' });
   const v = { days: a.activeDays, trades: a.trades, pair: a.topPair, token: a.topToken };
   await beat(vz, () => hm.play(), t('ch4.b1', v));
   await beat([hr, pill], () => countUp(hr.querySelector('.num'), a.activeDays, { duration: 1600 }), t('ch4.b2', v));
@@ -468,7 +489,7 @@ async function chBest() {
   const lead = B(h('p', { class: 'lead', text: t('ch5.label', { date: D(b.date) }) }));
   const vz = B(viz(t('ch5.curve'), chart));
   const sc = scene(4, 'ch5.name', 'trade_pnl', hr, lead, vz);
-  await showScene(sc, { shape: 'wave' });
+  await showScene(sc, { shape: 'spike' });
   const v = { date: D(b.date), inst: b.instId, market: b.market, pnl: fmt.int(b.pnl) };
   await beat(vz, () => chart.play({ highlight: false }), t('ch5.b1', v));
   await beat([hr, lead], () => chart.showHighlight(), t('ch5.b2', v));
@@ -487,7 +508,7 @@ async function chHarvest() {
   const m = C.meter(p.beats, { youLabel: t('ch6.you'), caption: t('ch6.beats', { beats: p.beats }) });
   const vz = B(viz(null, m));
   const sc = scene(5, 'ch6.name', 'account_pnl', hr, lead, vz);
-  await showScene(sc, { shape: 'diamond' });
+  await showScene(sc, { shape: 'gem' });
   const v = { total: fmt.int(p.total), pct: p.yieldPct, beats: p.beats };
   await beat([hr, lead], () => countUp(hr.querySelector('.num'), p.total, { duration: 2000 }), t('ch6.b1', v));
   await beat(pill, () => particles.kick(), t('ch6.b2', v));
@@ -511,7 +532,7 @@ async function chVolume(idx) {
   const hr = B(hero('0', t('ch7.label')));
   const vz = B(viz('TOP 3', bars, 'USDT'));
   const sc = scene(idx, 'ch7.name', 'account_volume', hr, vz);
-  await showScene(sc, { shape: 'bars' });
+  await showScene(sc, { shape: 'volumeBars' });
   const by = Object.fromEntries(v.breakdown.map((b) => [b.k, fmt.compact(b.v)]));
   const vars = { total: fmt.int(v.total), spot: by.spot, futures: by.futures, dex: by.dex };
   await beat(hr, () => countUp(hr.querySelector('.num'), v.total, { duration: 2000 }), t('ch7.b1', vars));
@@ -532,7 +553,7 @@ async function chEarn(idx) {
   const tileEarn = B(h('div', { class: 'tile' }, h('span', { text: t('ch8.earned') + ' · USDT' }), earnB));
   const vz = B(viz(t('ch8.accrual'), spark, `${YEAR}`));
   const sc = scene(idx, 'ch8.name', 'earn_positions', hr, h('div', { class: 'tiles' }, tileSub, tileEarn), vz);
-  await showScene(sc, { shape: 'ring' });
+  await showScene(sc, { shape: 'cone' });
   const v = { sub: fmt.int(e.subscribed), earned: fmt.int(e.earned), product: e.product, pct };
   await beat(tileSub, () => countUp(subB, e.subscribed, { duration: 1400 }), t('ch8.b1', v));
   await beat([tileEarn, vz], () => { countUp(earnB, e.earned, { duration: 1800 }); spark.play(); }, t('ch8.b2', v));
@@ -548,7 +569,7 @@ async function chBots(idx) {
   const hr = B(hero('0', `USDT · ${t('ch9.label')}`, { lime: true }));
   const vz = B(viz(b.strategy.toUpperCase(), g, `${b.trades} ${t('ch9.trades')} · ${fmt.int(b.volume)} ${t('ch9.vol')}`));
   const sc = scene(idx, 'ch9.name', 'bot_orders_history', hr, vz);
-  await showScene(sc, { shape: 'lattice' });
+  await showScene(sc, { shape: 'lattice3d' });
   const v = { trades: b.trades, vol: fmt.int(b.volume), earned: fmt.int(b.earned) };
   await beat(vz, () => g.play(), t('ch9.b1', v));
   await beat(hr, () => countUp(hr.querySelector('.num'), b.earned, { duration: 1800 }), t('ch9.b2', v));
@@ -566,7 +587,7 @@ async function chPeak() {
   const lead = B(h('p', { class: 'lead', text: `${t('ch10.label')} · ${D(p.date)}` }));
   const vz = B(viz(t('ch10.curve'), chart));
   const sc = scene(9, 'ch10.name', 'asset_valuation', hr, lead, vz);
-  await showScene(sc, { shape: 'peak' });
+  await showScene(sc, { shape: 'terrain' });
   const v = { date: D(p.date), value: fmt.int(p.value), pct: p.topPct };
   await beat(vz, () => chart.play({ highlight: false }), t('ch10.b1', v));
   await beat([hr, lead], () => { chart.showHighlight(); countUp(hr.querySelector('.num'), p.value, { duration: 1800 }); }, t('ch10.b2', v));
@@ -583,7 +604,7 @@ async function chFlow() {
   const hr = B(hero('0', `USDT · ${t('ch11.net')}`));
   const vz = B(viz(null, flow));
   const sc = scene(10, 'ch11.name', 'funding_flow', hr, vz);
-  await showScene(sc, { shape: 'sphere' });
+  await showScene(sc, { shape: 'infinity' });
   const v = { dep: fmt.int(f.deposit), wd: fmt.int(f.withdraw), net: fmt.int(f.deposit - f.withdraw) };
   await beat(vz, () => flow.playRow(0), t('ch11.b1', v));
   await beat(rowOut, () => flow.playRow(1), t('ch11.b2', v));
@@ -598,7 +619,7 @@ async function chDNA() {
   const rd = C.radar(axes, { size: 250 });
   const vz = B(viz(t('ch12.name'), rd, '/100'));
   const sc = scene(11, 'ch12.name', 'analyze_behavior', vz);
-  await showScene(sc, { shape: 'diamond' });
+  await showScene(sc, { shape: 'dna' });
   const v = Object.fromEntries(report.radar.map((r) => [r.k, r.v]));
   await beat(vz, () => rd.play(), t('ch12.b1', v));
   await beat(null, null, t('ch12.b2', v));
@@ -630,7 +651,7 @@ async function chPersona() {
   ascii.setMode('storm'); ascii.setIntensity(0.8);
   particles.setSpin(0.6);
   await showScene(an, { shape: 'scatter' });
-  const cycle = ['sphere', 'diamond', 'helix', 'grid'];
+  const cycle = ['galaxy', 'gem', 'dna', 'grid'];
   for (const [i, s] of cycle.entries()) setTimeout(() => particles.morphTo(s, { duration: 900 }), 700 + i * 950);
   await agent.think(t('ch13.think'), { perLine: 900 });
   alive = false;
