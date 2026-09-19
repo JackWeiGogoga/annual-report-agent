@@ -42,12 +42,8 @@ export const copy = {
       '167 tools across 11 modules discovered',
       'Scoping to read-only account & history tools',
     ],
-    'approval.title': 'Permission request',
-    'approval.body': 'okx-year-in-review wants read-only access to your 2025 records. Your API keys never leave this device.',
-    'approval.accept': 'Accept',
-    'approval.decline': 'Decline',
-    'approval.declined': "Understood. I won't touch your data without a green light — nothing leaves this device until you say so. Whenever you're ready:",
-    'approval.granted': 'Access granted. Reading your year, one tool call at a time.',
+
+    'session.ready': 'Connected, read-only. Replaying your 2025 records one tool call at a time — nothing leaves this device.',
 
     'ch2.name': 'GENESIS',
     'ch2.think': ['Fetching account profile', 'Reading registration timestamp', 'Computing tenure through Dec 31, 2025'],
@@ -245,12 +241,8 @@ export const copy = {
     'user.prompt': '看看我的 2025 年度账单',
 
     'ch1.think': ['加载技能 okx-year-in-review', '通过 stdio 连接 okx-trade-mcp', '发现 11 个模块共 167 个工具', '限定为只读的账户与历史工具'],
-    'approval.title': '权限请求',
-    'approval.body': 'okx-year-in-review 请求只读访问你的 2025 年记录。API 密钥不会离开这台设备。',
-    'approval.accept': '允许',
-    'approval.decline': '拒绝',
-    'approval.declined': '明白。没有你的许可我不会读取任何数据，一切都留在本机。准备好了随时告诉我：',
-    'approval.granted': '已获授权。开始逐个调用工具，读取你的这一年。',
+
+    'session.ready': '已连接，只读模式。开始逐个调用工具，回放你的 2025——数据不会离开这台设备。',
 
     'ch2.name': '起点',
     'ch2.think': ['读取账户档案', '解析注册时间戳', '计算到 2025 年 12 月 31 日的时长'],

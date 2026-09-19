@@ -32,7 +32,7 @@ npm run dev          # python3 serve.py 4187 —— 带 no-store 头的静态服
 ```
 入口   Composer：输入 / → 选中 okx-year-in-review → 提问 → 发送
        ↳ 发送瞬间输入内容"起飞"追进对话流变成用户气泡；输入框收成 34px 状态条（MCP 状态 + 技能 chip）
-00 SESSION      mcp.connect → 167 tools / 11 modules → ◈ 权限请求 [允许 / 拒绝]   ← HITL
+00 SESSION      mcp.connect → 167 tools / 11 modules → 「已连接 · 只读回放」（不弹权限请求，避免用户误以为是真实授权）
 01 GENESIS      account_profile      与 OKX 同行 N 天（年份时间轴）
 02 FIRST SIGNAL spot_fills           1月1日 22:50 首笔 BTC 成交（终端回执）
 03 ACTIVITY     account_bills        315 活跃天 / 87 笔（年度热力格）
@@ -96,4 +96,4 @@ vendor/three.module.js
 - **图表**：细描边（2px 线、≤14px 条）、发丝网格、4px 圆角数据端、单轴；所有图表支持 hover / 点按 tooltip。
 - **动效**：三层——ASCII 场（章节切换扫掠、解析时 storm）、粒子（每章一种形态、指针推挤、终章聚成品牌方块）、
   文字（解密揭示 / 打字机 / 滚数）。尊重 `prefers-reduced-motion`。
-- **HITL**：权限卡片可拒绝（智能体会礼貌重询）、分支选择改变章节顺序、人格卡片需确认生成、终章可继续追问。
+- **HITL**：分支选择改变章节顺序、人格卡片需确认生成、终章可继续追问。刻意不做模拟的权限请求：用户会当真，徒增负担。

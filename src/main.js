@@ -313,7 +313,6 @@ stripAsk.addEventListener('click', openComposer);
 // ---------------------------------------------------------------- chapters
 // Every chapter unfolds in beats: the agent says one thing, the stage reveals one layer.
 const D = (iso) => fmt.date(iso, lang);
-const scopes = ['account_balance', 'account_bills', 'spot_fills', 'bot_orders', 'earn_positions'];
 const B = (el) => { el.classList.add('beat'); return el; };
 async function beat(els, play, text, { pause = 650 } = {}) {
   for (const el of [].concat(els || [])) el?.classList.add('on');
@@ -328,22 +327,16 @@ async function chConnect() {
   const mods = [['account', 22], ['market', 24], ['spot', 18], ['swap', 21], ['bot', 14], ['earn', 12], ['dex', 16], ['smartmoney', 11], ['copytrade', 10], ['options', 9], ['system', 10]];
   const map = h('div', { class: 'modmap' }, mods.map(([m, n], i) => { const row = h('div', { class: 'm' + (['account', 'spot', 'bot', 'earn'].includes(m) ? '' : ' dim') }, h('span', { text: m }), h('b', { text: '▮'.repeat(Math.round(n / 3)) + ' ' + n })); row.style.animationDelay = `${i * 70}ms`; return row; }));
   const hr = B(hero('167', 'tools · 11 modules'));
-  const vz = B(viz('okx-trade-mcp · stdio', h('div', {}, map, h('div', { class: 'session-meta' }, h('span', {}, 'keys ', h('i', { text: 'local' })), h('span', {}, 'scope ', h('i', { text: 'read-only' })), h('span', {}, 'v', h('i', { text: '1.4.2' }))))));
+  const vz = B(viz('okx-trade-mcp · stdio', h('div', {}, map, h('div', { class: 'session-meta' }, h('span', {}, 'mode ', h('i', { text: 'replay' })), h('span', {}, 'scope ', h('i', { text: 'read-only' })), h('span', {}, 'v', h('i', { text: '1.4.2' }))))));
   const sc = scene(0, 'SESSION', 'okx-trade-mcp', hr, vz);
   sc.querySelector('.eyebrow span:nth-child(3)').textContent = 'SESSION';
   await agent.tool('mcp.connect', { server: 'okx-trade-mcp', transport: 'stdio' }, { status: 'ok', tools: 167, modules: 11, version: '1.4.2' }, { ms: 860, summary: 'connected · 167 tools · 11 modules' });
   await showScene(sc, { shape: 'ring' });
   particles.setSpin(0.14);
   await beat(hr, null, null, { pause: 300 });
-  await beat(vz, () => map.classList.add('go'), null, { pause: 400 });
-  let ok = await agent.approval({ title: t('approval.title'), body: t('approval.body'), scopes, accept: t('approval.accept'), decline: t('approval.decline') });
-  while (!ok) {
-    await agent.say(t('approval.declined'));
-    ok = await agent.approval({ title: t('approval.title'), body: t('approval.body'), scopes, accept: t('approval.accept'), decline: t('approval.decline') });
-  }
-  await agent.say(t('approval.granted'));
+  await beat(vz, () => map.classList.add('go'), t('session.ready'));
   setStatus('live', t('ui.status.live'));
-  await sleep(500);
+  await sleep(prefersReduced ? 200 : 1400);
 }
 
 async function chGenesis() {
