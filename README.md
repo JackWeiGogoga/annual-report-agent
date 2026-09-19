@@ -9,10 +9,12 @@
 无构建步骤，纯原生 ES Module + 本地化的 three.js。任何静态服务器都能跑：
 
 ```bash
-npm run dev          # python3 -m http.server 4187
-# 打开 http://localhost:4187/
+npm run dev          # python3 serve.py 4187 —— 带 no-store 头的静态服务器，改完即刷即见
+# 电脑：http://localhost:4187/
+# 手机：同一 Wi‑Fi 下打开 http://localhost:4187/phone.html 扫码（或直接输局域网地址）
 ```
 
+`serve.py` 对局域网开放（0.0.0.0），macOS 首次会弹防火墙提示，允许即可。
 （Claude Code 内置浏览器可直接用 `.claude/launch.json` 里的 `annual-report` 配置预览。）
 
 ### 调试参数
@@ -29,6 +31,7 @@ npm run dev          # python3 -m http.server 4187
 
 ```
 入口   Composer：输入 / → 选中 okx-year-in-review → 提问 → 发送
+       ↳ 发送瞬间输入内容"起飞"追进对话流变成用户气泡；输入框收成 34px 状态条（MCP 状态 + 技能 chip）
 00 SESSION      mcp.connect → 167 tools / 11 modules → ◈ 权限请求 [允许 / 拒绝]   ← HITL
 01 GENESIS      account_profile      与 OKX 同行 N 天（年份时间轴）
 02 FIRST SIGNAL spot_fills           1月1日 22:50 首笔 BTC 成交（终端回执）
@@ -43,7 +46,8 @@ npm run dev          # python3 -m http.server 4187
 10 FLOW         funding_flow         充值 21,887 / 提现 2,521 / 留存
 11 TRADING DNA  analyze_behavior     五维雷达（自动化 / 稳定性 / 收益 / 风控 / 多样性）
 12 PERSONA      「正在解析你的蓝图…」 → ◈ 生成人格卡片？[生成 / 暂不]           ← HITL
-                网格建筑师 · 特质 · 4 项核心数据 · 保存卡片 · Agent Trade Kit CTA · 可继续追问
+                网格建筑师 · 特质 · 4 项核心数据 · 保存卡片 · Agent Trade Kit CTA
+                状态条右侧出现「继续追问」，点击后输入框才滑回来
 ```
 
 ### 每章的叙事节奏
@@ -68,6 +72,7 @@ next    「继续」标签出现，9 s 自动推进，也可点击舞台 / 空�
 
 ```
 index.html            页面骨架（顶栏 / 舞台 / 智能体控制台 / 分享弹层）
+serve.py              开发用静态服务器（no-store、对局域网开放）；phone.html 生成手机访问二维码
 src/main.js           故事引擎：agent 控制台 API（think / tool / say / choice / approval）、场景、章节、自动播放
 src/copy.js           中英文案（{var} 占位）+ 技能列表
 src/data.js           年度数据（来自去年 demo）+ 确定性合成序列（热力格 / 曲线 / 网格）

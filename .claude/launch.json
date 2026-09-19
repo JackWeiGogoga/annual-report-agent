@@ -4,7 +4,10 @@
     {
       "name": "annual-report",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4187", "--bind", "0.0.0.0"],
+      "runtimeArgs": [
+        "serve.py",
+        "4187"
+      ],
       "port": 4187
     }
   ]

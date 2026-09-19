@@ -16,6 +16,7 @@ const app = $('#app'), stage = $('#stage'), sceneHost = $('#sceneHost'), thread 
 const nextBtn = $('#next'), nextRing = $('#nextRing'), nextLabel = $('#nextLabel'), progress = $('#progress');
 const composer = $('#composer'), composerBox = $('#composerBox'), input = $('#composerInput'), chips = $('#chips');
 const sendBtn = $('#send'), slash = $('#slash'), slashBtn = $('#slashBtn'), statusEl = $('#status');
+const consoleEl = $('#console'), stripStatus = $('#stripStatus'), stripChip = $('#stripChip'), stripAsk = $('#stripAsk');
 
 let lang = params.get('lang') ? (params.get('lang') === 'zh' ? 'zh' : 'en') : ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
 const t = (key, vars = {}) => {
@@ -63,7 +64,7 @@ window.addEventListener('pointerdown', (e) => { particles.setPointer(e.clientX, 
 window.addEventListener('pointerup', () => { clearTimeout(releaseTimer); releaseTimer = setTimeout(() => particles.releasePointer(), 300); });
 
 // ---------------------------------------------------------------- static UI / i18n
-function setStatus(kind, text) { statusEl.className = 'status ' + kind; statusEl.textContent = text; }
+function setStatus(kind, text) { for (const el of [statusEl, stripStatus]) { el.className = 'status ' + kind; el.textContent = text; } }
 function applyStatic() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   $('#brandSub').textContent = t('ui.brand');
@@ -76,6 +77,7 @@ function applyStatic() {
   $('#sheetHint').textContent = t('sheet.hint');
   $('#sheetDl').textContent = t('sheet.download');
   $('#sheetClose').textContent = t('sheet.close');
+  stripAsk.textContent = t('ui.followup');
   if (!storyStarted) { input.placeholder = t('composer.placeholder'); setStatus('', t('ui.status.idle')); }
   else if (app.dataset.phase === 'final') input.placeholder = t('ui.followup');
 }
@@ -99,7 +101,7 @@ const fmtArgs = (args) => Object.entries(args).map(([k, v]) => `${k}=${Array.isA
 
 const agent = {
   user(text, skill) {
-    push(h('div', { class: 'msg user' }, h('div', { class: 'bubble' }, skill ? h('span', { class: 'chip', text: '/' + skill }) : null, h('span', { text }))));
+    return push(h('div', { class: 'msg user' }, h('div', { class: 'bubble' }, skill ? h('span', { class: 'chip', text: '/' + skill }) : null, h('span', { text }))));
   },
   async think(lines, { perLine = 600 } = {}) {
     const body = h('div', { class: 'think-body' });
@@ -146,10 +148,10 @@ const agent = {
       }
     });
   },
-  approval({ title, body, scopes = [], accept, decline }) {
+  approval({ title, body, scopes = [], accept, decline, okLabel, noLabel }) {
     return new Promise((res) => {
       const verdict = h('div', { class: 'verdict' });
-      const done = (ok) => { card.classList.add('resolved'); verdict.textContent = ok ? '✓ ' + t('ui.accepted') : '✕ ' + t('ui.declined'); verdict.classList.toggle('neg', !ok); res(ok); };
+      const done = (ok) => { card.classList.add('resolved'); verdict.textContent = ok ? '✓ ' + (okLabel || t('ui.accepted')) : '✕ ' + (noLabel || t('ui.declined')); verdict.classList.toggle('neg', !ok); res(ok); };
       const card = h('div', { class: 'card' },
         h('div', { class: 'card-h' }, h('span', { class: 'shield', text: '◈' }), h('span', { text: title })),
         h('p', { text: body }),
@@ -222,7 +224,7 @@ function pickSkill(id, { focus = true } = {}) {
 }
 input.addEventListener('input', () => { demoCancelled = true; if (storyStarted) return; const v = input.value; if (v.startsWith('/')) openSlash(v.slice(1)); else closeSlash(); });
 input.addEventListener('keydown', (e) => {
-  if (slash.hidden) return;
+  if (slash.hidden) { if (e.key === 'Enter' && !e.isComposing && !input.disabled) { e.preventDefault(); composer.requestSubmit(); } return; }
   const items = [...slash.querySelectorAll('.skill')];
   let i = items.findIndex((x) => x.classList.contains('active'));
   if (e.key === 'ArrowDown') { e.preventDefault(); i = (i + 1) % items.length; }
@@ -254,19 +256,59 @@ async function runDemo() {
   startStory(text);
 }
 
+/** The composer's content lifts off as a ghost and chases the real bubble into the thread while the
+ *  console re-lays out underneath; its style morphs from input box to user bubble on the way. */
+function flyToThread(text, skill) {
+  const src = composerBox.getBoundingClientRect();
+  const ghost = h('div', { class: 'ghost' }, skill ? h('span', { class: 'chip', text: '/' + skill }) : null, h('span', { text }));
+  Object.assign(ghost.style, { left: src.left + 'px', top: src.top + 'px', width: src.width + 'px', height: src.height + 'px' });
+  document.body.appendChild(ghost);
+  const msg = agent.user(text, skill);
+  msg.classList.add('landing');
+  const bubble = msg.querySelector('.bubble');
+  const cur = { x: src.left, y: src.top, w: src.width, h: src.height };
+  const t0 = performance.now();
+  return new Promise((res) => {
+    function f(now) {
+      const e = now - t0;
+      const r = bubble.getBoundingClientRect();
+      const k = e < 220 ? 0.05 : 0.15;
+      cur.x += (r.left - cur.x) * k; cur.y += (r.top - cur.y) * k; cur.w += (r.width - cur.w) * k; cur.h += (r.height - cur.h) * k;
+      Object.assign(ghost.style, { left: cur.x + 'px', top: cur.y + 'px', width: cur.w + 'px', height: cur.h + 'px' });
+      if (e > 260) ghost.classList.add('to-bubble');
+      const settled = Math.abs(r.left - cur.x) + Math.abs(r.top - cur.y) + Math.abs(r.width - cur.w) < 2;
+      if ((settled && e > 1000) || e > 1700 || prefersReduced) { ghost.remove(); msg.classList.remove('landing'); res(); }
+      else requestAnimationFrame(f);
+    }
+    requestAnimationFrame(f);
+  });
+}
+
 async function startStory(text) {
   if (storyStarted) return;
   storyStarted = true; demoCancelled = true; closeSlash();
-  agent.user(text, pickedSkill || 'okx-year-in-review');
+  const skill = pickedSkill || 'okx-year-in-review';
+  const flight = flyToThread(text, skill);
+  // collapse the composer to a status strip; the ghost is now carrying its content
   input.value = ''; chips.replaceChildren(); input.disabled = true; input.placeholder = t('ui.status.working'); sendBtn.disabled = true;
   composerBox.classList.remove('hot');
+  stripChip.textContent = '/' + skill;
+  consoleEl.classList.add('compact');
   app.dataset.phase = 'story';
   ascii.sweep({ speed: 1700, width: 170 });
   particles.morphTo('scatter', { duration: 900 }); particles.setSpin(0.3);
   setTimeout(focusParticles, 60); setTimeout(focusParticles, 1000);
-  await sleep(750);
+  await flight;
+  await sleep(300);
   await runChapters();
 }
+function openComposer() {
+  consoleEl.classList.remove('compact'); app.classList.add('compose-open');
+  stripAsk.hidden = true;
+  setTimeout(focusParticles, 60); setTimeout(focusParticles, 1000);
+  setTimeout(() => input.focus(), 350);
+}
+stripAsk.addEventListener('click', openComposer);
 
 // ---------------------------------------------------------------- chapters
 // Every chapter unfolds in beats: the agent says one thing, the stage reveals one layer.
@@ -547,7 +589,7 @@ async function chPersona() {
   particles.setSpin(0.1);
 
   const persona = pickPersona();
-  const minted = await agent.approval({ title: t('mint.title'), body: t('mint.body'), accept: t('mint.accept'), decline: t('mint.later') });
+  const minted = await agent.approval({ title: t('mint.title'), body: t('mint.body'), accept: t('mint.accept'), decline: t('mint.later'), okLabel: t('mint.done'), noLabel: t('mint.skipped') });
   if (!minted) await agent.say(t('mint.declined'));
 
   const nameEl = h('h2', { class: 'p-name' });
@@ -575,6 +617,7 @@ async function chPersona() {
   if (minted) { openSheet(persona); await sleep(600); }
   await beat(cta, null, t('ch13.closing'));
   input.disabled = false; sendBtn.disabled = false; input.placeholder = t('ui.followup');
+  stripChip.hidden = true; stripAsk.hidden = false;
   setStatus('live', t('ui.status.live'));
 }
 

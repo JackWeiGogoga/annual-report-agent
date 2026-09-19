@@ -5,7 +5,7 @@
   "type": "module",
   "description": "OKX 2025 Year in Review — agent-driven H5 story (no build step)",
   "scripts": {
-    "dev": "python3 -m http.server 4187 --bind 0.0.0.0",
+    "dev": "python3 serve.py 4187",
     "check": "node --check src/main.js && node --check src/charts.js && node --check src/fx/particles.js && node --check src/fx/ascii.js && node --check src/fx/text.js && node --check src/data.js && node --check src/copy.js && node --check src/share.js"
   }
 }

@@ -242,6 +242,28 @@ code, pre { font-family: var(--mono); }
 
 /* composer */
 .composer { position: relative; padding: 8px 14px calc(12px + env(safe-area-inset-bottom)); }
+.composer-main { max-height: 180px; transition: max-height .6s var(--ease), opacity .35s ease, transform .55s var(--ease); }
+.console.compact .composer-main { max-height: 0; opacity: 0; transform: translateY(14px); overflow: hidden; pointer-events: none; }
+.strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 0; opacity: 0; overflow: hidden; padding: 0 4px; font: 500 11px/1 var(--mono); color: var(--t4); transition: height .5s var(--ease), opacity .4s ease; }
+.console.compact .strip { height: 34px; opacity: 1; transition: height .5s var(--ease), opacity .4s ease .3s; }
+.strip-right { display: flex; align-items: center; gap: 8px; }
+.chip.small { font-size: 10px; padding: 4px 6px; }
+.chip.small:empty, .chip.small[hidden] { display: none; }
+.ask { font: 600 11px/1 var(--mono); color: #000; background: var(--brand); border: 0; border-radius: 999px; padding: 7px 11px; cursor: pointer; animation: popUp .3s var(--ease); }
+.ask[hidden] { display: none; }
+.app.compose-open { --console-h: min(52dvh, 330px); }
+
+/* ghost: the composer content flying into the thread as a user bubble */
+.ghost {
+  position: fixed; z-index: 60; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 8px 12px; overflow: hidden; pointer-events: none; color: var(--t1); font-size: 15px; line-height: 1.5;
+  background: rgba(20, 20, 20, .96); border: 1px solid rgba(188, 255, 47, .55); border-radius: 16px;
+  box-shadow: 0 0 0 3px var(--brand-dim), 0 24px 60px rgba(0, 0, 0, .6);
+  transition: background .5s ease, border-color .5s ease, border-radius .5s ease, box-shadow .5s ease, font-size .5s ease;
+}
+.ghost.to-bubble { background: var(--s3); border-color: var(--line-2); border-radius: 14px 14px 4px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); font-size: 14px; }
+.msg.user .bubble { transition: opacity .3s ease; }
+.msg.user.landing .bubble { opacity: 0; }
 .composer-box { display: flex; align-items: center; gap: 8px; background: rgba(20, 20, 20, .92); border: 1px solid var(--line-2); border-radius: 16px; padding: 8px 8px 8px 12px; transition: border-color .3s, box-shadow .3s; }
 .composer-box:focus-within, .composer-box.hot { border-color: rgba(188, 255, 47, .55); box-shadow: 0 0 0 3px var(--brand-dim); }
 .chips:empty { display: none; }
